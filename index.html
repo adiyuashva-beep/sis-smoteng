@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Supervisi Akademik SMA N 1 Mojotengah</title>
-    <!-- Tailwind -->
+    <title>Supervisi Akademik - SMA N 1 Mojotengah</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Firebase -->
+    <!-- Firebase SDK (pakai compat biar gampang) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
@@ -30,62 +30,311 @@
         <span class="step-indicator" data-step="5">5. Selesai</span>
     </div>
 
-    <!-- Step 1: Identitas (dengan dropdown guru) -->
+    <!-- STEP 1: IDENTITAS -->
     <div id="step1" class="step active">
         <h2 class="text-xl font-semibold mb-4">Identitas Supervisi</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label class="block mb-1">Nama Guru</label>
-                <select id="guruSelect" class="w-full border rounded p-2">
+                <label class="block mb-1 font-medium">Nama Guru</label>
+                <select id="guruSelect" class="w-full border rounded p-2 mb-2">
                     <option value="">-- Pilih Guru --</option>
                 </select>
-                <input type="text" id="guruNamaManual" class="w-full border rounded p-2 mt-2 hidden" placeholder="Atau ketik manual">
-                <button type="button" id="toggleManual" class="text-sm text-blue-600 mt-1">+ Input manual</button>
+                <div class="flex items-center gap-2">
+                    <input type="text" id="guruNamaManual" class="w-full border rounded p-2 hidden" placeholder="Ketik nama manual">
+                    <button type="button" id="toggleManual" class="text-sm text-blue-600 whitespace-nowrap">+ Input manual</button>
+                </div>
             </div>
-            <div><label class="block mb-1">Mata Pelajaran</label><input type="text" id="guruMapel" class="w-full border rounded p-2"></div>
-            <div><label class="block mb-1">Materi</label><input type="text" id="guruMateri" class="w-full border rounded p-2"></div>
-            <div><label class="block mb-1">Kelas/Fase</label><input type="text" id="kelasFase" class="w-full border rounded p-2"></div>
-            <div><label class="block mb-1">Tanggal Observasi</label><input type="date" id="tanggalObservasi" class="w-full border rounded p-2"></div>
-            <div><label class="block mb-1">Nama Observer</label><input type="text" id="observerNama" class="w-full border rounded p-2"></div>
+            <div>
+                <label class="block mb-1 font-medium">Mata Pelajaran</label>
+                <input type="text" id="guruMapel" class="w-full border rounded p-2" placeholder="Contoh: Matematika">
+            </div>
+            <div>
+                <label class="block mb-1 font-medium">Materi</label>
+                <input type="text" id="guruMateri" class="w-full border rounded p-2" placeholder="Contoh: Trigonometri">
+            </div>
+            <div>
+                <label class="block mb-1 font-medium">Kelas/Fase</label>
+                <input type="text" id="kelasFase" class="w-full border rounded p-2" placeholder="Contoh: XI/Fase F">
+            </div>
+            <div>
+                <label class="block mb-1 font-medium">Tanggal Observasi</label>
+                <input type="date" id="tanggalObservasi" class="w-full border rounded p-2">
+            </div>
+            <div>
+                <label class="block mb-1 font-medium">Nama Observer</label>
+                <input type="text" id="observerNama" class="w-full border rounded p-2" placeholder="Nama supervisor">
+            </div>
         </div>
         <button id="nextToPra" class="mt-6 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Lanjut ke Pra Observasi →</button>
     </div>
 
-    <!-- Step 2: Pra Observasi (sama seperti sebelumnya, tapi kita perlu simpan per guru) -->
-    <div id="step2" class="step hidden">...</div>
-    <!-- Step 3,4,5 isi sama persis dengan kode sebelumnya, hanya perlu penyesuaian penyimpanan teacherId -->
-    <!-- Untuk menghemat tempat, saya tulis ulang bagian penting di bawah -->
+    <!-- STEP 2: PRA OBSERVASI -->
+    <div id="step2" class="step hidden">
+        <h2 class="text-xl font-semibold mb-4">Pra Observasi (Komponen RPP/MA)</h2>
+        <p class="text-sm text-gray-600 mb-4">Isi skor 0-3 untuk setiap komponen. Nilai akhir akan dihitung otomatis.</p>
+        
+        <div id="praContainer" class="space-y-4 max-h-[600px] overflow-y-auto pr-2"></div>
+        
+        <!-- Dokumentasi -->
+        <div class="mt-6 border-t pt-4">
+            <h3 class="font-medium mb-2 flex items-center gap-2">
+                <i class="fas fa-camera text-blue-600"></i> Dokumentasi Pra Observasi (RPP, diskusi, dll)
+            </h3>
+            <input type="file" id="praFoto" accept="image/*" capture="environment" multiple class="mb-2 border p-2 w-full">
+            <div id="praFotoPreview" class="flex flex-wrap gap-2 mt-2"></div>
+        </div>
 
+        <!-- Ringkasan nilai -->
+        <div class="mt-6 p-4 bg-blue-50 rounded-lg flex flex-wrap justify-between items-center gap-2">
+            <span class="font-medium">Total Skor: <span id="praSkorTotal" class="text-xl">0</span> / 60</span>
+            <span class="font-medium">Nilai Akhir: <span id="praNilaiAkhir" class="text-xl">0</span></span>
+            <span class="font-medium">Kategori: <span id="praKategori" class="text-xl font-bold px-3 py-1 bg-white rounded">-</span></span>
+        </div>
+        
+        <div class="flex justify-between mt-4">
+            <button id="backFromPra" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600">← Kembali</button>
+            <button id="savePra" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">Simpan & Lanjut ke Observasi →</button>
+        </div>
+    </div>
+
+    <!-- STEP 3: OBSERVASI -->
+    <div id="step3" class="step hidden">
+        <h2 class="text-xl font-semibold mb-4">Observasi Pembelajaran Mendalam</h2>
+        
+        <div id="obsContainer" class="space-y-6 max-h-[600px] overflow-y-auto pr-2"></div>
+
+        <!-- Dokumentasi -->
+        <div class="mt-6 border-t pt-4">
+            <h3 class="font-medium mb-2 flex items-center gap-2">
+                <i class="fas fa-camera text-green-600"></i> Dokumentasi Observasi Kelas
+            </h3>
+            <input type="file" id="obsFoto" accept="image/*" capture="environment" multiple class="mb-2 border p-2 w-full">
+            <div id="obsFotoPreview" class="flex flex-wrap gap-2 mt-2"></div>
+        </div>
+
+        <!-- Ringkasan nilai -->
+        <div class="mt-6 p-4 bg-green-50 rounded-lg flex flex-wrap justify-between items-center gap-2">
+            <span class="font-medium">Total Skor: <span id="obsSkorTotal" class="text-xl">0</span> / 87</span>
+            <span class="font-medium">Nilai Akhir: <span id="obsNilaiAkhir" class="text-xl">0</span></span>
+            <span class="font-medium">Kategori: <span id="obsKategori" class="text-xl font-bold px-3 py-1 bg-white rounded">-</span></span>
+        </div>
+
+        <div class="flex justify-between mt-4">
+            <button id="backFromObs" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600">← Kembali</button>
+            <button id="saveObs" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">Simpan & Lanjut ke Umpan Balik →</button>
+        </div>
+    </div>
+
+    <!-- STEP 4: UMPAN BALIK -->
+    <div id="step4" class="step hidden">
+        <h2 class="text-xl font-semibold mb-4">Umpan Balik & Refleksi</h2>
+        
+        <div class="space-y-6 max-h-[600px] overflow-y-auto pr-2">
+            <!-- Refleksi Guru -->
+            <div class="border p-4 rounded-lg bg-purple-50">
+                <h3 class="font-semibold mb-3 flex items-center gap-2">
+                    <i class="fas fa-user-graduate text-purple-700"></i> A. Refleksi Guru
+                </h3>
+                <div class="grid gap-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Perasaan setelah mengajar</label>
+                        <select id="refPerasaan" class="w-full border rounded p-2">
+                            <option>Sangat Puas</option>
+                            <option>Puas</option>
+                            <option>Cukup</option>
+                            <option>Kurang Puas</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Ketercapaian tujuan</label>
+                        <select id="refKetercapaian" class="w-full border rounded p-2">
+                            <option>Tercapai Semua</option>
+                            <option>Sebagian Besar</option>
+                            <option>Sebagian Kecil</option>
+                            <option>Belum Tercapai</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Penyebab jika belum tercapai</label>
+                        <textarea id="refPenyebab" rows="2" class="w-full border rounded p-2" placeholder="..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Bagian paling berhasil</label>
+                        <textarea id="refBerhasil" rows="2" class="w-full border rounded p-2" placeholder="..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Hal yang perlu diperbaiki</label>
+                        <textarea id="refPerbaiki" rows="2" class="w-full border rounded p-2" placeholder="..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Hal baru yang dipelajari</label>
+                        <textarea id="refHalBaru" rows="2" class="w-full border rounded p-2" placeholder="..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Catatan Supervisor -->
+            <div class="border p-4 rounded-lg bg-blue-50">
+                <h3 class="font-semibold mb-3 flex items-center gap-2">
+                    <i class="fas fa-clipboard-check text-blue-700"></i> B. Catatan Supervisor
+                </h3>
+                <div class="grid gap-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Hal-hal yang sudah baik</label>
+                        <textarea id="catBaik" rows="2" class="w-full border rounded p-2" placeholder="..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Hal yang perlu ditingkatkan</label>
+                        <textarea id="catTingkatkan" rows="2" class="w-full border rounded p-2" placeholder="..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Rekomendasi tindak lanjut</label>
+                        <select id="catRekomendasi" class="w-full border rounded p-2">
+                            <option>Pendampingan intensif</option>
+                            <option>Monitoring berkala</option>
+                            <option>Bisa menjadi mentor</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Target perbaikan berikutnya</label>
+                        <textarea id="catTarget" rows="2" class="w-full border rounded p-2" placeholder="..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kesepakatan -->
+            <div class="border p-4 rounded-lg bg-green-50">
+                <h3 class="font-semibold mb-3 flex items-center gap-2">
+                    <i class="fas fa-handshake text-green-700"></i> C. Kesepakatan Bersama
+                </h3>
+                <div class="grid gap-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Yang akan dipertahankan</label>
+                        <textarea id="kesDipertahankan" rows="2" class="w-full border rounded p-2" placeholder="..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Yang akan diperbaiki</label>
+                        <textarea id="kesDiperbaiki" rows="2" class="w-full border rounded p-2" placeholder="..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Rencana aksi</label>
+                        <textarea id="kesAksi" rows="2" class="w-full border rounded p-2" placeholder="..."></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1">Jadwal supervisi berikutnya</label>
+                        <input type="date" id="kesJadwal" class="w-full border rounded p-2">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-between mt-6">
+            <button id="backFromUmpan" class="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-600">← Kembali</button>
+            <button id="saveUmpan" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">Selesaikan & Simpan ke Firebase</button>
+        </div>
+    </div>
+
+    <!-- STEP 5: SELESAI -->
+    <div id="step5" class="step hidden text-center py-8">
+        <i class="fas fa-check-circle text-green-600 text-6xl mb-4"></i>
+        <h2 class="text-2xl font-bold mb-2">Supervisi Selesai!</h2>
+        <p class="mb-4 text-gray-600">Data telah disimpan di Firebase.</p>
+        <button id="newSupervisi" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Buat Supervisi Baru</button>
+    </div>
 </div>
 
 <script>
-    // Konfigurasi Firebase (ganti dengan punyamu)
+    // ==================== FIREBASE CONFIG (UDH DIISI) ====================
     const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_AUTH_DOMAIN",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_STORAGE_BUCKET",
-        messagingSenderId: "YOUR_SENDER_ID",
-        appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyDZvt4plCfimAmBanMXtbdV0sSjif0Jb_o",
+        authDomain: "sis-smoteng.firebaseapp.com",
+        projectId: "sis-smoteng",
+        storageBucket: "sis-smoteng.firebasestorage.app",
+        messagingSenderId: "1003318599159",
+        appId: "1:1003318599159:web:8f17315d5e923c3350e2f2"
     };
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const storage = firebase.storage();
 
-    // State dan data instrumen (salin dari kode sebelumnya)...
-    // [Kode lengkap ada di pesan sebelumnya, sekarang kita modif bagian load guru dan simpan]
+    // ==================== DATA INSTRUMEN ====================
+    const praKomponen = [
+        { no:1, komponen:"Identitas RPP/MA", indikator:"Lengkap: mata pelajaran, Jenjang, kelas, Materi Pokok, alokasi waktu dll" },
+        { no:2, komponen:"Identifikasi Murid (Opsional)", indikator:"Terdapat identifikasi kesiapan murid sebelum belajar" },
+        { no:3, komponen:"Materi Pembelajaran (Opsional)", indikator:"Jelas: Jenis Pengetahuan, relevansi, struktur materi" },
+        { no:4, komponen:"Dimensi Profil Lulusan", indikator:"Terdapat Dimensi Profil lulusan selaras dengan tujuan" },
+        { no:5, komponen:"Capaian Pembelajaran (Opsional)", indikator:"Keterkaitan disiplin ilmu dengan tujuan pembelajaran" },
+        { no:6, komponen:"Tujuan Pembelajaran", indikator:"Mencakup kompetensi, konten, dan kata kerja operasional" },
+        { no:7, komponen:"Topik Pembelajaran (Opsional)", indikator:"Topik relevan dengan capaian dan tujuan" },
+        { no:8, komponen:"Praktek Pedagogis", indikator:"Kesesuaian model, pendekatan, strategi pada langkah pembelajaran" },
+        { no:9, komponen:"Kemitraan Pembelajaran (Opsional)", indikator:"Kemitraan tergambar pada langkah/asesmen" },
+        { no:10, komponen:"Lingkungan Pembelajaran", indikator:"Lingkungan belajar tergambar pada langkah/asesmen" },
+        { no:11, komponen:"Pemanfaatan Digital (Opsional)", indikator:"Pemanfaatan digital tergambar pada langkah/asesmen" },
+        { no:12, komponen:"Kegiatan Awal", indikator:"Orientasi, apersepsi, motivasi, prinsip pembelajaran mendalam" },
+        { no:13, komponen:"Kegiatan Inti", indikator:"Memfasilitasi MEMAHAMI, MENGAPLIKASI, MEREFLEKSI" },
+        { no:14, komponen:"Kegiatan Akhir", indikator:"Memfasilitasi tindakan saling MEMULIAKAN" },
+        { no:15, komponen:"Asesmen Awal", indikator:"Mengetahui kesiapan belajar murid" },
+        { no:16, komponen:"Asesmen Proses", indikator:"Memantau perkembangan, umpan balik" },
+        { no:17, komponen:"Asesmen Akhir", indikator:"Mengukur pencapaian kompetensi" },
+        { no:18, komponen:"Rubrik Penilaian", indikator:"Kriteria ketercapaian tujuan pembelajaran" },
+        { no:19, komponen:"Rubrik 8 Profil Lulusan", indikator:"Kriteria ketercapaian profil lulusan" },
+        { no:20, komponen:"Terdapat Lembar Kerja Murid", indikator:"Lembar kerja selaras dengan tujuan" }
+    ];
 
-    // ========== LOAD GURU KE DROPDOWN ==========
+    const obsIndikator = [
+        { no:1, aspek:"Berkesadaran", deskripsi:"Guru melakukan asesmen awal untuk mengetahui kondisi awal dan kebutuhan belajar peserta didik." },
+        { no:2, aspek:"Berkesadaran", deskripsi:"Guru mengarahkan dan memotivasi peserta didik untuk belajar secara antusias dan aktif" },
+        { no:3, aspek:"Berkesadaran", deskripsi:"Guru menggunakan variasi strategi dan metode mengajar" },
+        { no:4, aspek:"Bermakna", deskripsi:"Guru menyampaikan materi disertai contoh kontekstual" },
+        { no:5, aspek:"Bermakna", deskripsi:"Guru mengarahkan peserta didik untuk belajar melalui pengalaman nyata" },
+        { no:6, aspek:"Bermakna", deskripsi:"Peserta didik merefleksikan makna dari materi" },
+        { no:7, aspek:"Menggembirakan", deskripsi:"Guru membangun komunikasi pembelajaran yang interaktif" },
+        { no:8, aspek:"Menggembirakan", deskripsi:"Guru menggunakan strategi lintas mata pelajaran" },
+        { no:9, aspek:"Menggembirakan", deskripsi:"Guru menggunakan ice breaker, game, atau kuis" },
+        { no:10, aspek:"Memahami", deskripsi:"Guru menyampaikan tujuan pembelajaran dengan jelas" },
+        { no:11, aspek:"Memahami", deskripsi:"Guru menjelaskan materi secara sistematis" },
+        { no:12, aspek:"Memahami", deskripsi:"Guru menggunakan beragam sumber belajar" },
+        { no:13, aspek:"Memahami", deskripsi:"Guru menggunakan alat peraga/media pembelajaran" },
+        { no:14, aspek:"Memahami", deskripsi:"Guru menerapkan pendekatan konstruktivisme" },
+        { no:15, aspek:"Memahami", deskripsi:"Guru memberikan kesempatan murid mengekspresikan pemahaman" },
+        { no:16, aspek:"Memahami", deskripsi:"Guru melakukan asesmen formatif" },
+        { no:17, aspek:"Memahami", deskripsi:"Guru membangun suasana belajar menyenangkan" },
+        { no:18, aspek:"Memahami", deskripsi:"Guru memberikan kesempatan belajar melalui observasi/praktik" },
+        { no:19, aspek:"Mengaplikasikan", deskripsi:"Guru memberikan kesempatan menerapkan materi secara kontekstual" },
+        { no:20, aspek:"Mengaplikasikan", deskripsi:"Guru memberikan kesempatan menunjukkan kemampuan melalui demonstrasi/proyek" },
+        { no:21, aspek:"Merefleksi", deskripsi:"Guru memberikan kesempatan menyampaikan pesan dan perasaan" },
+        { no:22, aspek:"Merefleksi", deskripsi:"Guru memberikan kesempatan merefleksikan materi" },
+        { no:23, aspek:"Lingkungan Belajar", deskripsi:"Murid aktif bertanya" },
+        { no:24, aspek:"Lingkungan Belajar", deskripsi:"Pertanyaan lebih berharga daripada jawaban" },
+        { no:25, aspek:"Lingkungan Belajar", deskripsi:"Pembelajaran yang bervariasi" },
+        { no:26, aspek:"Lingkungan Belajar", deskripsi:"Hubungan eksplisit dengan dunia nyata" },
+        { no:27, aspek:"Lingkungan Belajar", deskripsi:"Kolaborasi di dalam dan luar kelas" },
+        { no:28, aspek:"Lingkungan Belajar", deskripsi:"Asesmen yang transparan dan otentik" },
+        { no:29, aspek:"Lingkungan Belajar", deskripsi:"Integrasi budaya belajar, ruang fisik dan virtual" }
+    ];
+
+    // ==================== STATE ====================
+    let currentStep = 1;
+    let praData = praKomponen.map((k, idx) => ({ no: idx+1, skor: 0, catatan: '' }));
+    let obsData = obsIndikator.map((o, idx) => ({ no: idx+1, skor: 0, keterangan: '' }));
+    let fotoPraUrls = [];
+    let fotoObsUrls = [];
+
+    // ==================== LOAD GURU ====================
     async function loadTeachers() {
-        const snapshot = await db.collection('teachers').orderBy('name').get();
-        const select = document.getElementById('guruSelect');
-        select.innerHTML = '<option value="">-- Pilih Guru --</option>';
-        snapshot.forEach(doc => {
-            const option = document.createElement('option');
-            option.value = doc.id;
-            option.textContent = doc.data().name;
-            select.appendChild(option);
-        });
+        try {
+            const snapshot = await db.collection('teachers').orderBy('name').get();
+            const select = document.getElementById('guruSelect');
+            select.innerHTML = '<option value="">-- Pilih Guru --</option>';
+            snapshot.forEach(doc => {
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = doc.data().name;
+                select.appendChild(option);
+            });
+        } catch (e) {
+            console.log("Gagal load guru, mungkin belum ada data", e);
+        }
     }
     loadTeachers();
 
@@ -104,13 +353,184 @@
         }
     });
 
-    // Saat simpan, kita ambil teacherId (jika pilih) atau nama manual
-    // Modifikasi bagian saveUmpan: kita tambahkan teacherId
+    // ==================== RENDER PRA ====================
+    function renderPra() {
+        const container = document.getElementById('praContainer');
+        let html = '';
+        praKomponen.forEach((item, idx) => {
+            html += `
+                <div class="border p-3 rounded bg-gray-50">
+                    <div class="font-medium">${item.no}. ${item.komponen}</div>
+                    <div class="text-sm text-gray-600 mb-2">${item.indikator}</div>
+                    <div class="flex items-center gap-4 flex-wrap">
+                        <span class="text-sm font-medium">Skor:</span>
+                        ${[0,1,2,3].map(s => `
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="pra_${idx}" value="${s}" ${praData[idx].skor == s ? 'checked' : ''} class="mr-1"> ${s}
+                            </label>
+                        `).join('')}
+                        <input type="text" placeholder="Catatan" value="${praData[idx].catatan}" data-idx="${idx}" class="pra-catatan ml-4 border rounded p-1 text-sm w-64">
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+
+        document.querySelectorAll('input[type=radio][name^="pra_"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const idx = parseInt(this.name.split('_')[1]);
+                praData[idx].skor = parseInt(this.value);
+                hitungPra();
+            });
+        });
+        document.querySelectorAll('.pra-catatan').forEach(inp => {
+            inp.addEventListener('input', function() {
+                const idx = this.dataset.idx;
+                praData[idx].catatan = this.value;
+            });
+        });
+        hitungPra();
+    }
+
+    function hitungPra() {
+        let total = praData.reduce((sum, d) => sum + d.skor, 0);
+        document.getElementById('praSkorTotal').innerText = total;
+        let nilai = (total / 60) * 100;
+        document.getElementById('praNilaiAkhir').innerText = nilai.toFixed(2);
+        let kategori = '';
+        if (nilai >= 86) kategori = 'Sangat Baik';
+        else if (nilai >= 76) kategori = 'Baik';
+        else if (nilai >= 60) kategori = 'Cukup';
+        else kategori = 'Kurang';
+        document.getElementById('praKategori').innerText = kategori;
+    }
+
+    // ==================== RENDER OBS ====================
+    function renderObs() {
+        const container = document.getElementById('obsContainer');
+        let groups = {};
+        obsIndikator.forEach((item, idx) => {
+            if (!groups[item.aspek]) groups[item.aspek] = [];
+            groups[item.aspek].push({...item, idx});
+        });
+
+        let html = '';
+        for (let aspek in groups) {
+            html += `<div class="border p-3 rounded bg-blue-50"><h3 class="font-semibold text-lg mb-2">${aspek}</h3>`;
+            groups[aspek].forEach(item => {
+                html += `
+                    <div class="mt-2 p-2 border-b border-blue-200">
+                        <div class="text-sm">${item.no}. ${item.deskripsi}</div>
+                        <div class="flex items-center gap-4 flex-wrap mt-1">
+                            <span class="text-sm font-medium">Skor:</span>
+                            ${[0,1,2,3].map(s => `
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="obs_${item.idx}" value="${s}" ${obsData[item.idx].skor == s ? 'checked' : ''} class="mr-1"> ${s}
+                                </label>
+                            `).join('')}
+                            <input type="text" placeholder="Keterangan" value="${obsData[item.idx].keterangan}" data-idx="${item.idx}" class="obs-keterangan ml-4 border rounded p-1 text-sm w-64">
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+        }
+        container.innerHTML = html;
+
+        document.querySelectorAll('input[type=radio][name^="obs_"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const idx = parseInt(this.name.split('_')[1]);
+                obsData[idx].skor = parseInt(this.value);
+                hitungObs();
+            });
+        });
+        document.querySelectorAll('.obs-keterangan').forEach(inp => {
+            inp.addEventListener('input', function() {
+                const idx = this.dataset.idx;
+                obsData[idx].keterangan = this.value;
+            });
+        });
+        hitungObs();
+    }
+
+    function hitungObs() {
+        let total = obsData.reduce((sum, d) => sum + d.skor, 0);
+        document.getElementById('obsSkorTotal').innerText = total;
+        let nilai = (total / 87) * 100;
+        document.getElementById('obsNilaiAkhir').innerText = nilai.toFixed(2);
+        let kategori = '';
+        if (nilai >= 86) kategori = 'Sangat Baik';
+        else if (nilai >= 76) kategori = 'Baik';
+        else if (nilai >= 60) kategori = 'Cukup';
+        else kategori = 'Kurang';
+        document.getElementById('obsKategori').innerText = kategori;
+    }
+
+    // ==================== UPLOAD FOTO ====================
+    async function uploadFiles(inputId, previewId, folder) {
+        const input = document.getElementById(inputId);
+        if (!input.files.length) return [];
+        const urls = [];
+        const preview = document.getElementById(previewId);
+        preview.innerHTML = '';
+        
+        for (let file of input.files) {
+            const ref = storage.ref(`${folder}/${Date.now()}_${file.name}`);
+            await ref.put(file);
+            const url = await ref.getDownloadURL();
+            urls.push(url);
+            
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.className = 'w-20 h-20 object-cover rounded border';
+            preview.appendChild(img);
+        }
+        return urls;
+    }
+
+    // ==================== STEP NAVIGATION ====================
+    function showStep(step) {
+        document.querySelectorAll('.step').forEach(el => el.classList.add('hidden'));
+        document.getElementById(`step${step}`).classList.remove('hidden');
+        document.querySelectorAll('.step-indicator').forEach(el => {
+            el.classList.remove('text-blue-600', 'font-bold');
+        });
+        document.querySelector(`.step-indicator[data-step="${step}"]`).classList.add('text-blue-600', 'font-bold');
+        currentStep = step;
+    }
+
+    // Event Listeners
+    document.getElementById('nextToPra').addEventListener('click', () => {
+        if (!document.getElementById('guruNamaManual').value && !document.getElementById('guruSelect').value) {
+            alert('Pilih atau isi nama guru!');
+            return;
+        }
+        renderPra();
+        showStep(2);
+    });
+
+    document.getElementById('backFromPra').addEventListener('click', () => showStep(1));
+    document.getElementById('backFromObs').addEventListener('click', () => showStep(2));
+    document.getElementById('backFromUmpan').addEventListener('click', () => showStep(3));
+
+    document.getElementById('savePra').addEventListener('click', async () => {
+        fotoPraUrls = await uploadFiles('praFoto', 'praFotoPreview', `supervisi/pra/${Date.now()}`);
+        renderObs();
+        showStep(3);
+    });
+
+    document.getElementById('saveObs').addEventListener('click', async () => {
+        fotoObsUrls = await uploadFiles('obsFoto', 'obsFotoPreview', `supervisi/obs/${Date.now()}`);
+        showStep(4);
+    });
+
     document.getElementById('saveUmpan').addEventListener('click', async () => {
+        // Ambil identitas
         const select = document.getElementById('guruSelect');
         const manual = document.getElementById('guruNamaManual');
         let teacherId = null;
         let guruNama = '';
+
         if (!manual.classList.contains('hidden')) {
             guruNama = manual.value;
         } else {
@@ -120,16 +540,96 @@
                 guruNama = doc.data().name;
             }
         }
-        // ... kumpulkan data lainnya seperti sebelumnya ...
+
         const identitas = {
-            teacherId: teacherId, // bisa null
+            teacherId: teacherId,
             guruNama: guruNama,
             guruMapel: document.getElementById('guruMapel').value,
-            // ... sisanya sama
+            guruMateri: document.getElementById('guruMateri').value,
+            kelasFase: document.getElementById('kelasFase').value,
+            tanggalObservasi: document.getElementById('tanggalObservasi').value,
+            observerNama: document.getElementById('observerNama').value,
         };
-        // Gabungkan dengan data pra, obs, umpan balik lalu simpan
-        // (salin dari kode sebelumnya, tambahkan teacherId)
+
+        // Hitung nilai
+        const praTotal = praData.reduce((s,d) => s+d.skor, 0);
+        const praNilai = (praTotal/60)*100;
+        const praKategori = praNilai>=86?'Sangat Baik':praNilai>=76?'Baik':praNilai>=60?'Cukup':'Kurang';
+
+        const obsTotal = obsData.reduce((s,d) => s+d.skor, 0);
+        const obsNilai = (obsTotal/87)*100;
+        const obsKategori = obsNilai>=86?'Sangat Baik':obsNilai>=76?'Baik':obsNilai>=60?'Cukup':'Kurang';
+
+        // Umpan balik
+        const umpanBalik = {
+            refleksiGuru: {
+                perasaan: document.getElementById('refPerasaan').value,
+                ketercapaian: document.getElementById('refKetercapaian').value,
+                penyebab: document.getElementById('refPenyebab').value,
+                bagianBerhasil: document.getElementById('refBerhasil').value,
+                perluDiperbaiki: document.getElementById('refPerbaiki').value,
+                halBaru: document.getElementById('refHalBaru').value,
+            },
+            catatanSupervisor: {
+                halBaik: document.getElementById('catBaik').value,
+                perluDitingkatkan: document.getElementById('catTingkatkan').value,
+                rekomendasi: document.getElementById('catRekomendasi').value,
+                targetPerbaikan: document.getElementById('catTarget').value,
+            },
+            kesepakatan: {
+                dipertahankan: document.getElementById('kesDipertahankan').value,
+                diperbaiki: document.getElementById('kesDiperbaiki').value,
+                rencanaAksi: document.getElementById('kesAksi').value,
+                jadwalBerikutnya: document.getElementById('kesJadwal').value,
+            }
+        };
+
+        // Data lengkap
+        const dataSupervisi = {
+            ...identitas,
+            praObservasi: {
+                komponen: praKomponen.map((k, idx) => ({
+                    no: k.no,
+                    komponen: k.komponen,
+                    indikator: k.indikator,
+                    skor: praData[idx].skor,
+                    catatan: praData[idx].catatan
+                })),
+                skorTotal: praTotal,
+                nilaiAkhir: praNilai,
+                kategori: praKategori,
+                foto: fotoPraUrls
+            },
+            observasi: {
+                indikator: obsIndikator.map((o, idx) => ({
+                    no: o.no,
+                    aspek: o.aspek,
+                    deskripsi: o.deskripsi,
+                    skor: obsData[idx].skor,
+                    keterangan: obsData[idx].keterangan
+                })),
+                skorTotal: obsTotal,
+                nilaiAkhir: obsNilai,
+                kategori: obsKategori,
+                foto: fotoObsUrls
+            },
+            umpanBalik: umpanBalik,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        try {
+            await db.collection('supervisions').add(dataSupervisi);
+            showStep(5);
+        } catch (e) {
+            alert('Gagal menyimpan: ' + e.message);
+        }
     });
+
+    document.getElementById('newSupervisi').addEventListener('click', () => {
+        location.reload();
+    });
+
+    showStep(1);
 </script>
 </body>
 </html>
