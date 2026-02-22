@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supervisi Akademik SMA N 1 Mojotengah</title>
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body class="bg-gray-100 p-4">
+
+<div class="max-w-6xl mx-auto bg-white rounded-lg shadow-lg p-6">
+    <h1 class="text-2xl font-bold text-center text-blue-800 mb-4">
+        Instrumen Supervisi Akademik
+        <span class="block text-sm font-normal text-gray-600">SMA Negeri 1 Mojotengah, Wonosobo</span>
+    </h1>
+
+    <!-- Step indicator -->
+    <div class="flex justify-between mb-6 border-b pb-2 text-sm font-medium text-gray-500">
+        <span class="step-indicator" data-step="1">1. Identitas</span>
+        <span class="step-indicator" data-step="2">2. Pra Observasi</span>
+        <span class="step-indicator" data-step="3">3. Observasi</span>
+        <span class="step-indicator" data-step="4">4. Umpan Balik</span>
+        <span class="step-indicator" data-step="5">5. Selesai</span>
+    </div>
+
+    <!-- Step 1: Identitas (dengan dropdown guru) -->
+    <div id="step1" class="step active">
+        <h2 class="text-xl font-semibold mb-4">Identitas Supervisi</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block mb-1">Nama Guru</label>
+                <select id="guruSelect" class="w-full border rounded p-2">
+                    <option value="">-- Pilih Guru --</option>
+                </select>
+                <input type="text" id="guruNamaManual" class="w-full border rounded p-2 mt-2 hidden" placeholder="Atau ketik manual">
+                <button type="button" id="toggleManual" class="text-sm text-blue-600 mt-1">+ Input manual</button>
+            </div>
+            <div><label class="block mb-1">Mata Pelajaran</label><input type="text" id="guruMapel" class="w-full border rounded p-2"></div>
+            <div><label class="block mb-1">Materi</label><input type="text" id="guruMateri" class="w-full border rounded p-2"></div>
+            <div><label class="block mb-1">Kelas/Fase</label><input type="text" id="kelasFase" class="w-full border rounded p-2"></div>
+            <div><label class="block mb-1">Tanggal Observasi</label><input type="date" id="tanggalObservasi" class="w-full border rounded p-2"></div>
+            <div><label class="block mb-1">Nama Observer</label><input type="text" id="observerNama" class="w-full border rounded p-2"></div>
+        </div>
+        <button id="nextToPra" class="mt-6 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Lanjut ke Pra Observasi →</button>
+    </div>
+
+    <!-- Step 2: Pra Observasi (sama seperti sebelumnya, tapi kita perlu simpan per guru) -->
+    <div id="step2" class="step hidden">...</div>
+    <!-- Step 3,4,5 isi sama persis dengan kode sebelumnya, hanya perlu penyesuaian penyimpanan teacherId -->
+    <!-- Untuk menghemat tempat, saya tulis ulang bagian penting di bawah -->
+
+</div>
+
+<script>
+    // Konfigurasi Firebase (ganti dengan punyamu)
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_AUTH_DOMAIN",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_STORAGE_BUCKET",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const storage = firebase.storage();
+
+    // State dan data instrumen (salin dari kode sebelumnya)...
+    // [Kode lengkap ada di pesan sebelumnya, sekarang kita modif bagian load guru dan simpan]
+
+    // ========== LOAD GURU KE DROPDOWN ==========
+    async function loadTeachers() {
+        const snapshot = await db.collection('teachers').orderBy('name').get();
+        const select = document.getElementById('guruSelect');
+        select.innerHTML = '<option value="">-- Pilih Guru --</option>';
+        snapshot.forEach(doc => {
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = doc.data().name;
+            select.appendChild(option);
+        });
+    }
+    loadTeachers();
+
+    // Toggle manual input
+    document.getElementById('toggleManual').addEventListener('click', () => {
+        const manual = document.getElementById('guruNamaManual');
+        const select = document.getElementById('guruSelect');
+        if (manual.classList.contains('hidden')) {
+            manual.classList.remove('hidden');
+            select.classList.add('hidden');
+            document.getElementById('toggleManual').innerText = 'Pilih dari daftar';
+        } else {
+            manual.classList.add('hidden');
+            select.classList.remove('hidden');
+            document.getElementById('toggleManual').innerText = '+ Input manual';
+        }
+    });
+
+    // Saat simpan, kita ambil teacherId (jika pilih) atau nama manual
+    // Modifikasi bagian saveUmpan: kita tambahkan teacherId
+    document.getElementById('saveUmpan').addEventListener('click', async () => {
+        const select = document.getElementById('guruSelect');
+        const manual = document.getElementById('guruNamaManual');
+        let teacherId = null;
+        let guruNama = '';
+        if (!manual.classList.contains('hidden')) {
+            guruNama = manual.value;
+        } else {
+            teacherId = select.value;
+            if (teacherId) {
+                const doc = await db.collection('teachers').doc(teacherId).get();
+                guruNama = doc.data().name;
+            }
+        }
+        // ... kumpulkan data lainnya seperti sebelumnya ...
+        const identitas = {
+            teacherId: teacherId, // bisa null
+            guruNama: guruNama,
+            guruMapel: document.getElementById('guruMapel').value,
+            // ... sisanya sama
+        };
+        // Gabungkan dengan data pra, obs, umpan balik lalu simpan
+        // (salin dari kode sebelumnya, tambahkan teacherId)
+    });
+</script>
+</body>
+</html>
