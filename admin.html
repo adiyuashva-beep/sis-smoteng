@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Supervisi - SMA N 1 Mojotengah</title>
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body class="bg-gray-100 p-4">
+
+<div id="loginSection" class="max-w-md mx-auto bg-white p-6 rounded shadow mt-10">
+    <h2 class="text-2xl font-bold mb-4 text-center">Login Admin</h2>
+    <h3 class="text-sm text-center text-gray-600 mb-4">SMA Negeri 1 Mojotengah</h3>
+    <input type="email" id="email" placeholder="Email" class="w-full border p-2 mb-2 rounded">
+    <input type="password" id="password" placeholder="Password" class="w-full border p-2 mb-4 rounded">
+    <button id="loginBtn" class="bg-blue-600 text-white px-4 py-2 rounded w-full hover:bg-blue-700">Masuk</button>
+    <p id="loginError" class="text-red-500 mt-2 text-center"></p>
+</div>
+
+<div id="adminPanel" class="hidden max-w-7xl mx-auto">
+    <!-- Navbar -->
+    <div class="bg-white shadow rounded-lg p-4 mb-4 flex justify-between items-center">
+        <h1 class="text-xl font-bold flex items-center gap-2">
+            <i class="fas fa-school text-blue-600"></i> Admin Supervisi SMA N 1 Mojotengah
+        </h1>
+        <button id="logoutBtn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Logout</button>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div class="flex border-b mb-4 bg-white rounded-t-lg p-2">
+        <button class="tab-btn px-4 py-2 font-medium text-blue-600 border-b-2 border-blue-600" data-tab="import">
+            <i class="fas fa-upload mr-1"></i>Import Guru
+        </button>
+        <button class="tab-btn px-4 py-2 font-medium text-gray-600" data-tab="charts">
+            <i class="fas fa-chart-bar mr-1"></i>Grafik
+        </button>
+        <button class="tab-btn px-4 py-2 font-medium text-gray-600" data-tab="monitor">
+            <i class="fas fa-list mr-1"></i>Monitor
+        </button>
+    </div>
+
+    <!-- Tab Import Guru -->
+    <div id="tabImport" class="tab-content">
+        <div class="bg-white p-4 rounded shadow mb-4">
+            <h2 class="text-lg font-semibold mb-2">Upload Data Guru (Excel/CSV)</h2>
+            <p class="text-sm text-gray-600 mb-2">Kolom yang diperlukan: <strong>nama</strong> (wajib).</p>
+            <div class="flex gap-2 items-center">
+                <input type="file" id="excelFile" accept=".xlsx, .xls, .csv" class="border p-2 flex-1">
+                <button id="importBtn" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                    <i class="fas fa-cloud-upload-alt mr-1"></i>Import
+                </button>
+            </div>
+            <div id="importResult" class="mt-4"></div>
+        </div>
+        
+        <div class="bg-white p-4 rounded shadow">
+            <h2 class="text-lg font-semibold mb-2">Daftar Guru</h2>
+            <div id="teacherList" class="overflow-auto max-h-96 border rounded p-2"></div>
+        </div>
+    </div>
+
+    <!-- Tab Grafik -->
+    <div id="tabCharts" class="tab-content hidden">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-white p-4 rounded shadow">
+                <h3 class="font-semibold mb-2">Distribusi Nilai Pra Observasi</h3>
+                <canvas id="chartPraDistribution" height="200"></canvas>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+                <h3 class="font-semibold mb-2">Distribusi Nilai Observasi</h3>
+                <canvas id="chartObsDistribution" height="200"></canvas>
+            </div>
+            <div class="bg-white p-4 rounded shadow md:col-span-2">
+                <h3 class="font-semibold mb-2">Top 10 Guru (Rata-rata Nilai)</h3>
+                <canvas id="chartTopTeachers" height="250"></canvas>
+            </div>
+            <div class="bg-white p-4 rounded shadow md:col-span-2">
+                <h3 class="font-semibold mb-2">Tren Nilai dari Waktu ke Waktu</h3>
+                <canvas id="chartTrend" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Monitor -->
+    <div id="tabMonitor" class="tab-content hidden">
+        <div class="bg-white p-4 rounded shadow">
+            <h2 class="text-lg font-semibold mb-2">Daftar Supervisi</h2>
+            <div class="mb-4 flex flex-wrap gap-2">
+                <input type="text" id="filterTeacher" placeholder="Cari guru..." class="border p-2 rounded flex-1">
+                <input type="date" id="filterDate" class="border p-2 rounded">
+                <button id="applyFilter" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                    <i class="fas fa-filter mr-1"></i>Filter
+                </button>
+                <button id="resetFilter" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                    Reset
+                </button>
+            </div>
+            <div id="supervisionTable" class="overflow-auto border rounded"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ==================== FIREBASE CONFIG ====================
+    const firebaseConfig = {
+        apiKey: "AIzaSyDZvt4plCfimAmBanMXtbdV0sSjif0Jb_o",
+        authDomain: "sis-smoteng.firebaseapp.com",
+        projectId: "sis-smoteng",
+        storageBucket: "sis-smoteng.firebasestorage.app",
+        messagingSenderId: "1003318599159",
+        appId: "1:1003318599159:web:8f17315d5e923c3350e2f2"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    const auth = firebase.auth();
+
+    // ==================== LOGIN ====================
+    document.getElementById('loginBtn').addEventListener('click', () => {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        auth.signInWithEmailAndPassword(email, password)
+            .then(() => {
+                document.getElementById('loginSection').classList.add('hidden');
+                document.getElementById('adminPanel').classList.remove('hidden');
+                loadAllData();
+            })
+            .catch(err => {
+                document.getElementById('loginError').innerText = 'Email atau password salah!';
+            });
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+        auth.signOut().then(() => {
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('adminPanel').classList.add('hidden');
+        });
+    });
+
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('adminPanel').classList.remove('hidden');
+            loadAllData();
+        }
+    });
+
+    // ==================== TAB SWITCH ====================
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => {
+                b.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+                b.classList.add('text-gray-600');
+            });
+            btn.classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById('tab' + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.remove('hidden');
+            
+            // Refresh grafik jika buka tab charts
+            if (btn.dataset.tab === 'charts') {
+                setTimeout(loadCharts, 500); // delay biar canvas ready
+            }
+        });
+    });
+
+    // ==================== IMPORT GURU ====================
+    document.getElementById('importBtn').addEventListener('click', async () => {
+        const file = document.getElementById('excelFile').files[0];
+        if (!file) {
+            alert('Pilih file terlebih dahulu!');
+            return;
+        }
+        
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data);
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet);
+        
+        let success = 0, failed = 0;
+        for (let row of rows) {
+            // Cari kolom nama (case insensitive)
+            let name = null;
+            for (let key in row) {
+                if (key.toLowerCase().includes('nama')) {
+                    name = row[key];
+                    break;
+                }
+            }
+            if (!name) {
+                failed++;
+                continue;
+            }
+            try {
+                await db.collection('teachers').add({ 
+                    name: String(name).trim(), 
+                    createdAt: new Date() 
+                });
+                success++;
+            } catch (e) {
+                failed++;
+            }
+        }
+        
+        document.getElementById('importResult').innerHTML = `
+            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded">
+                <i class="fas fa-check-circle mr-1"></i> Sukses: ${success}, Gagal: ${failed}
+            </div>
+        `;
+        loadTeacherList();
+    });
+
+    async function loadTeacherList() {
+        const snap = await db.collection('teachers').orderBy('name').get();
+        let html = '<table class="w-full border"><tr><th class="border p-2 bg-gray-100">No</th><th class="border p-2 bg-gray-100">Nama Guru</th></tr>';
+        let no = 1;
+        snap.forEach(doc => {
+            html += `<tr><td class="border p-2 text-center">${no++}</td><td class="border p-2">${doc.data().name}</td></tr>`;
+        });
+        html += '</table>';
+        document.getElementById('teacherList').innerHTML = html;
+    }
+
+    // ==================== GRAFIK ====================
+    async function loadCharts() {
+        const supervisions = await db.collection('supervisions').get();
+        const praScores = [];
+        const obsScores = [];
+        const teacherScores = {};
+        const dataByDate = {};
+
+        supervisions.forEach(doc => {
+            const d = doc.data();
+            if (d.praObservasi && d.observasi) {
+                const pra = d.praObservasi.nilaiAkhir || 0;
+                const obs = d.observasi.nilaiAkhir || 0;
+                praScores.push(pra);
+                obsScores.push(obs);
+
+                const teacher = d.guruNama || 'Tanpa Nama';
+                if (!teacherScores[teacher]) {
+                    teacherScores[teacher] = { praSum: 0, obsSum: 0, count: 0 };
+                }
+                teacherScores[teacher].praSum += pra;
+                teacherScores[teacher].obsSum += obs;
+                teacherScores[teacher].count++;
+
+                const date = d.tanggalObservasi || 'Unknown';
+                if (!dataByDate[date]) {
+                    dataByDate[date] = { praSum: 0, obsSum: 0, count: 0 };
+                }
+                dataByDate[date].praSum += pra;
+                dataByDate[date].obsSum += obs;
+                dataByDate[date].count++;
+            }
+        });
+
+        // Distribusi kategori
+        const categories = ['Kurang (<60)', 'Cukup (60-75)', 'Baik (76-85)', 'Sangat Baik (86+)'];
+        const praCounts = [0,0,0,0];
+        const obsCounts = [0,0,0,0];
+        
+        praScores.forEach(s => {
+            if (s < 60) praCounts[0]++;
+            else if (s < 76) praCounts[1]++;
+            else if (s < 86) praCounts[2]++;
+            else praCounts[3]++;
+        });
+        obsScores.forEach(s => {
+            if (s < 60) obsCounts[0]++;
+            else if (s < 76) obsCounts[1]++;
+            else if (s < 86) obsCounts[2]++;
+            else obsCounts[3]++;
+        });
+
+        // Chart Pra
+        new Chart(document.getElementById('chartPraDistribution'), {
+            type: 'bar',
+            data: {
+                labels: categories,
+                datasets: [{
+                    label: 'Jumlah Guru',
+                    data: praCounts,
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)'
+                }]
+            },
+            options: { responsive: true }
+        });
+
+        // Chart Obs
+        new Chart(document.getElementById('chartObsDistribution'), {
+            type: 'bar',
+            data: {
+                labels: categories,
+                datasets: [{
+                    label: 'Jumlah Guru',
+                    data: obsCounts,
+                    backgroundColor: 'rgba(255, 99, 132, 0.7)'
+                }]
+            }
+        });
+
+        // Top 10 guru
+        const topTeachers = Object.entries(teacherScores)
+            .map(([name, data]) => ({
+                name,
+                avg: ((data.praSum/data.count) + (data.obsSum/data.count)) / 2
+            }))
+            .sort((a,b) => b.avg - a.avg)
+            .slice(0,10);
+
+        new Chart(document.getElementById('chartTopTeachers'), {
+            type: 'bar',
+            data: {
+                labels: topTeachers.map(t => t.name.length > 20 ? t.name.substring(0,20)+'...' : t.name),
+                datasets: [{
+                    label: 'Rata-rata Nilai',
+                    data: topTeachers.map(t => t.avg),
+                    backgroundColor: 'rgba(75, 192, 192, 0.7)'
+                }]
+            },
+            options: { indexAxis: 'y' }
+        });
+
+        // Trend
+        const sortedDates = Object.keys(dataByDate).sort();
+        const avgPraByDate = sortedDates.map(d => dataByDate[d].praSum / dataByDate[d].count);
+        const avgObsByDate = sortedDates.map(d => dataByDate[d].obsSum / dataByDate[d].count);
+
+        new Chart(document.getElementById('chartTrend'), {
+            type: 'line',
+            data: {
+                labels: sortedDates,
+                datasets: [
+                    { label: 'Rata-rata Pra Observasi', data: avgPraByDate, borderColor: 'blue', fill: false },
+                    { label: 'Rata-rata Observasi', data: avgObsByDate, borderColor: 'red', fill: false }
+                ]
+            }
+        });
+    }
+
+    // ==================== MONITOR ====================
+    async function loadMonitor(filterTeacher = '', filterDate = '') {
+        const snap = await db.collection('supervisions').orderBy('tanggalObservasi', 'desc').get();
+        let html = `
+            <table class="w-full border">
+                <tr class="bg-gray-100">
+                    <th class="border p-2">Tanggal</th>
+                    <th class="border p-2">Guru</th>
+                    <th class="border p-2">Mapel</th>
+                    <th class="border p-2">Pra</th>
+                    <th class="border p-2">Kategori</th>
+                    <th class="border p-2">Obs</th>
+                    <th class="border p-2">Kategori</th>
+                    <th class="border p-2">Aksi</th>
+                </tr>
+        `;
+        
+        let count = 0;
+        snap.forEach(doc => {
+            const d = doc.data();
+            const teacher = d.guruNama || '';
+            const date = d.tanggalObservasi || '';
+            
+            if (filterTeacher && !teacher.toLowerCase().includes(filterTeacher.toLowerCase())) return;
+            if (filterDate && date !== filterDate) return;
+            
+            count++;
+            const pra = d.praObservasi ? d.praObservasi.nilaiAkhir.toFixed(2) : '-';
+            const praKat = d.praObservasi ? d.praObservasi.kategori : '-';
+            const obs = d.observasi ? d.observasi.nilaiAkhir.toFixed(2) : '-';
+            const obsKat = d.observasi ? d.observasi.kategori : '-';
+            
+            html += `<tr>
+                <td class="border p-2">${date}</td>
+                <td class="border p-2">${teacher}</td>
+                <td class="border p-2">${d.guruMapel || '-'}</td>
+                <td class="border p-2 text-center font-bold">${pra}</td>
+                <td class="border p-2">${praKat}</td>
+                <td class="border p-2 text-center font-bold">${obs}</td>
+                <td class="border p-2">${obsKat}</td>
+                <td class="border p-2 text-center">
+                    <button onclick="viewDetail('${doc.id}')" class="text-blue-600 hover:text-blue-800">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </td>
+            </tr>`;
+        });
+        
+        if (count === 0) {
+            html += '<tr><td colspan="8" class="border p-4 text-center text-gray-500">Tidak ada data</td></tr>';
+        }
+        html += '</table>';
+        document.getElementById('supervisionTable').innerHTML = html;
+    }
+
+    window.viewDetail = (id) => {
+        alert('Lihat detail ID: ' + id + '\nFitur detail akan segera hadir!');
+    };
+
+    document.getElementById('applyFilter').addEventListener('click', () => {
+        const teacher = document.getElementById('filterTeacher').value;
+        const date = document.getElementById('filterDate').value;
+        loadMonitor(teacher, date);
+    });
+
+    document.getElementById('resetFilter').addEventListener('click', () => {
+        document.getElementById('filterTeacher').value = '';
+        document.getElementById('filterDate').value = '';
+        loadMonitor();
+    });
+
+    async function loadAllData() {
+        await loadTeacherList();
+        await loadMonitor();
+        await loadCharts();
+    }
+</script>
+</body>
+</html>
